@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Monitoring Dashboard - Enhanced Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.5);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .metric-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.5);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(1.02);
+        }
+        .insight-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.5);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            background-image: linear-gradient(to bottom right, rgb(239, 246, 255), rgb(224, 231, 255));
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .animate-slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { Activity, Sun, Moon, Clock, TrendingUp, AlertTriangle, MapPin, Brain, BarChart3, ChevronDown, ChevronUp, Filter, RefreshCw, Camera } = lucide;
+
+        // Enhanced Mock Data Generator
+        const EVENT_TYPES = ['motion', 'high_alert', 'camera_trigger'];
+        const LOCATIONS = ['Living Room', 'Kitchen', 'Bedroom', 'Hallway', 'Garage', 'Entrance', 'Storage', 'Office', 'Basement', 'Backyard'];
+
+        const generateMockData = () => {
+            const data = [];
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+            
+            const totalEvents = Math.floor(Math.random() * 300) + 200;
+            
+            for (let i = 0; i < totalEvents; i++) {
+                const randomTime = thirtyDaysAgo.getTime() + Math.random() * (now.getTime() - thirtyDaysAgo.getTime());
+                const timestamp = new Date(randomTime);
+                
+                const hour = timestamp.getHours();
+                let eventType;
+                
+                if (hour >= 22 || hour <= 5) {
+                    eventType = Math.random() < 0.3 ? 'high_alert' : 
+                                 Math.random() < 0.6 ? 'camera_trigger' : 'motion';
+                } else if (hour >= 6 && hour <= 9) {
+                    eventType = Math.random() < 0.7 ? 'motion' : 
+                                 Math.random() < 0.9 ? 'camera_trigger' : 'high_alert';
+                } else if (hour >= 18 && hour <= 21) {
+                    eventType = Math.random() < 0.5 ? 'motion' : 
+                                 Math.random() < 0.8 ? 'camera_trigger' : 'high_alert';
+                } else {
+                    eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+                }
+                
+                let confidence;
+                switch (eventType) {
+                    case 'high_alert':
+                        confidence = Math.floor(Math.random() * 15) + 85;
+                        break;
+                    case 'camera_trigger':
+                        confidence = Math.floor(Math.random() * 20) + 75;
+                        break;
+                    default:
+                        confidence = Math.floor(Math.random() * 30) + 60;
+                }
+                
+                const isWeekend = timestamp.getDay() === 0 || timestamp.getDay() === 6;
+                let location;
+                if (isWeekend && Math.random() < 0.3) {
+                    location = Math.random() < 0.5 ? 'Living Room' : 'Backyard';
+                } else {
+                    location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+                }
+                
+                data.push({
+                    id: i + 1,
+                    timestamp: timestamp.toISOString(),
+                    eventType,
+                    location,
+                    confidence,
+                    duration: Math.floor(Math.random() * 300) + 5,
+                    sensorId: `SNR-${Math.floor(Math.random() * 10) + 1}`,
+                    severity: eventType === 'high_alert' ? 'high' : eventType === 'camera_trigger' ? 'medium' : 'low'
+                });
+            }
+            
+            data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            return data;
+        };
+
+        const generateNewEvent = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            let eventType;
+            if (hour >= 22 || hour <= 5) {
+                eventType = Math.random() < 0.3 ? 'high_alert' : 
+                             Math.random() < 0.6 ? 'camera_trigger' : 'motion';
+            } else if (hour >= 6 && hour <= 9) {
+                eventType = Math.random() < 0.7 ? 'motion' : 
+                             Math.random() < 0.9 ? 'camera_trigger' : 'high_alert';
+            } else {
+                eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+            }
+            
+            let confidence;
+            switch (eventType) {
+                case 'high_alert':
+                    confidence = Math.floor(Math.random() * 15) + 85;
+                    break;
+                case 'camera_trigger':
+                    confidence = Math.floor(Math.random() * 20) + 75;
+                    break;
+                default:
+                    confidence = Math.floor(Math.random() * 30) + 60;
+            }
+            
+            return {
+                id: Date.now(),
+                timestamp: now.toISOString(),
+                eventType,
+                location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
+                confidence,
+                duration: Math.floor(Math.random() * 300) + 5,
+                sensorId: `SNR-${Math.floor(Math.random() * 10) + 1}`,
+                severity: eventType === 'high_alert' ? 'high' : eventType === 'camera_trigger' ? 'medium' : 'low'
+            };
+        };
+
+        const getFilteredData = (data, filter) => {
+            const now = new Date();
+            let startDate;
+            
+            switch (filter) {
+                case 'day':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    break;
+                case 'week':
+                    startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'month':
+                default:
+                    startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+                    break;
+            }
+            
+            return data.filter(event => new Date(event.timestamp) >= startDate);
+        };
+
+        // Enhanced MetricCards Component
+        const MetricCards = ({ data }) => {
+            const totalEvents = data.length;
+            const latestEvent = data.length > 0 ? data[0] : null;
+            const todayEvents = data.filter(event => {
+                const eventDate = new Date(event.timestamp);
+                const today = new Date();
+                return eventDate.toDateString() === today.toDateString();
+            }).length;
+
+            const averageConfidence = data.length > 0 
+                ? Math.round(data.reduce((sum, event) => sum + (parseInt(event.confidence) || 0), 0) / data.length)
+                : 0;
+
+            const hourlyCounts = {};
+            data.forEach(event => {
+                const hour = new Date(event.timestamp).getHours();
+                hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
+            });
+            
+            const peakHour = Object.entries(hourlyCounts).reduce((a, b) => 
+                hourlyCounts[a[0]] > hourlyCounts[b[0]] ? a : b
+            , ['0', 0]);
+
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const thirtyDayEvents = data.filter(event => 
+                new Date(event.timestamp) >= thirtyDaysAgo
+            );
+            const dailyAverage = Math.round(thirtyDayEvents.length / 30);
+
+            const formatTime = (timestamp) => {
+                return new Date(timestamp).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            };
+
+            const formatDate = (timestamp) => {
+                return new Date(timestamp).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            };
+
+            return React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" },
+                React.createElement('div', { className: "metric-card animate-fade-in" },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Total Events"),
+                            React.createElement('p', { className: "text-3xl font-bold text-gray-900 mt-2" }, totalEvents.toLocaleString())
+                        ),
+                        React.createElement('div', { className: "p-3 bg-blue-100 rounded-lg" },
+                            React.createElement(Activity, { className: "h-6 w-6 text-blue-600" })
+                        )
+                    )
+                ),
+                React.createElement('div', { className: "metric-card animate-fade-in", style: { animationDelay: '0.1s' } },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Today's Events"),
+                            React.createElement('p', { className: "text-3xl font-bold text-gray-900 mt-2" }, todayEvents.toLocaleString())
+                        ),
+                        React.createElement('div', { className: "p-3 bg-green-100 rounded-lg" },
+                            React.createElement(TrendingUp, { className: "h-6 w-6 text-green-600" })
+                        )
+                    )
+                ),
+                React.createElement('div', { className: "metric-card animate-fade-in", style: { animationDelay: '0.2s' } },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Latest Event"),
+                            React.createElement('p', { className: "text-lg font-semibold text-gray-900 mt-2" }, latestEvent ? formatTime(latestEvent.timestamp) : 'No data'),
+                            React.createElement('p', { className: "text-sm text-gray-500 mt-1" }, latestEvent ? formatDate(latestEvent.timestamp) : '')
+                        ),
+                        React.createElement('div', { className: "p-3 bg-orange-100 rounded-lg" },
+                            React.createElement(Clock, { className: "h-6 w-6 text-orange-600" })
+                        )
+                    )
+                ),
+                React.createElement('div', { className: "metric-card animate-fade-in", style: { animationDelay: '0.3s' } },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Peak Hour"),
+                            React.createElement('p', { className: "text-3xl font-bold text-gray-900 mt-2" }, `${peakHour[0]}:00`),
+                            React.createElement('p', { className: "text-sm text-gray-500" }, `${peakHour[1]} events`)
+                        ),
+                        React.createElement('div', { className: "p-3 bg-purple-100 rounded-lg" },
+                            React.createElement(BarChart3, { className: "h-6 w-6 text-purple-600" })
+                        )
+                    )
+                ),
+                React.createElement('div', { className: "metric-card animate-fade-in", style: { animationDelay: '0.4s' } },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Daily Average"),
+                            React.createElement('p', { className: "text-3xl font-bold text-gray-900 mt-2" }, dailyAverage),
+                            React.createElement('p', { className: "text-sm text-gray-500" }, "events/day")
+                        ),
+                        React.createElement('div', { className: "p-3 bg-indigo-100 rounded-lg" },
+                            React.createElement(TrendingUp, { className: "h-6 w-6 text-indigo-600" })
+                        )
+                    )
+                ),
+                React.createElement('div', { className: "metric-card animate-fade-in", style: { animationDelay: '0.5s' } },
+                    React.createElement('div', { className: "flex items-center justify-between" },
+                        React.createElement('div', null,
+                            React.createElement('p', { className: "text-sm font-medium text-gray-600" }, "Avg Confidence"),
+                            React.createElement('p', { className: "text-3xl font-bold text-gray-900 mt-2" }, `${averageConfidence}%`)
+                        ),
+                        React.createElement('div', { className: "p-3 bg-teal-100 rounded-lg" },
+                            React.createElement(MapPin, { className: "h-6 w-6 text-teal-600" })
+                        )
+                    )
+                )
+            );
+        };
+
+        // Enhanced EventTimeline Component
+        const EventTimeline = ({ data }) => {
+            const [showAll, setShowAll] = useState(false);
+            const displayData = showAll ? data : data.slice(0, 10);
+
+            const formatTime = (timestamp) => {
+                return new Date(timestamp).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            };
+
+            const formatDate = (timestamp) => {
+                return new Date(timestamp).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            };
+
+            const getEventTypeIcon = (eventType) => {
+                switch (eventType) {
+                    case 'high_alert':
+                        return React.createElement(AlertTriangle, { className: "h-4 w-4 text-red-600" });
+                    case 'camera_trigger':
+                        return React.createElement(Camera, { className: "h-4 w-4 text-blue-600" });
+                    default:
+                        return React.createElement(Activity, { className: "h-4 w-4 text-green-600" });
+                }
+            };
+
+            const getEventTypeColor = (eventType) => {
+                switch (eventType) {
+                    case 'high_alert':
+                        return 'bg-red-100 border-red-200';
+                    case 'camera_trigger':
+                        return 'bg-blue-100 border-blue-200';
+                    default:
+                        return 'bg-green-100 border-green-200';
+                }
+            };
+
+            const formatEventType = (eventType) => {
+                switch (eventType) {
+                    case 'high_alert':
+                        return 'High Alert';
+                    case 'camera_trigger':
+                        return 'Camera Trigger';
+                    default:
+                        return 'Motion';
+                }
+            };
+
+            return React.createElement('div', { className: "glass-card animate-slide-up" },
+                React.createElement('div', { className: "flex items-center justify-between mb-6" },
+                    React.createElement('h2', { className: "text-xl font-semibold text-gray-900 flex items-center" },
+                        React.createElement(Clock, { className: "h-5 w-5 mr-2 text-blue-600" }),
+                        "Event Timeline"
+                    ),
+                    data.length > 10 && React.createElement('button', {
+                        onClick: () => setShowAll(!showAll),
+                        className: "flex items-center text-sm text-blue-600 hover:text-blue-700"
+                    },
+                        showAll ? "Show Less" : `Show All (${data.length})`,
+                        showAll ? React.createElement(ChevronUp, { className: "h-4 w-4 ml-1" }) : React.createElement(ChevronDown, { className: "h-4 w-4 ml-1" })
+                    )
+                ),
+                React.createElement('div', { className: "overflow-x-auto" },
+                    React.createElement('div', { className: "space-y-3 max-h-96 overflow-y-auto" },
+                        displayData.length === 0 
+                            ? React.createElement('div', { className: "text-center py-8 text-gray-500" }, "No events recorded")
+                            : displayData.map((event, index) =>
+                                React.createElement('div', {
+                                    key: index,
+                                    className: "flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                },
+                                    React.createElement('div', { className: "flex items-center space-x-4" },
+                                        React.createElement('div', { className: "flex-shrink-0" },
+                                            React.createElement('div', { className: `p-2 rounded-lg border ${getEventTypeColor(event.eventType)}` },
+                                                getEventTypeIcon(event.eventType)
+                                            )
+                                        ),
+                                        React.createElement('div', { className: "flex-1 min-w-0" },
+                                            React.createElement('div', { className: "flex items-center space-x-2" },
+                                                React.createElement('p', { className: "text-sm font-medium text-gray-900 truncate" }, formatEventType(event.eventType)),
+                                                React.createElement('span', { className: `px-2 py-1 text-xs font-medium rounded-full ${event.confidence >= 80 ? 'bg-green-100 text-green-600' : event.confidence >= 60 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}` }, `${event.confidence}%`),
+                                                event.severity === 'high' && React.createElement('span', { className: "px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-600" }, "High")
+                                            ),
+                                            React.createElement('div', { className: "flex items-center space-x-4 mt-1" },
+                                                React.createElement('div', { className: "flex items-center text-sm text-gray-500" },
+                                                    React.createElement(MapPin, { className: "h-3 w-3 mr-1" }),
+                                                    event.location
+                                                ),
+                                                React.createElement('div', { className: "text-sm text-gray-500" }, formatTime(event.timestamp)),
+                                                React.createElement('div', { className: "text-sm text-gray-500" }, `${event.duration}s`)
+                                            )
+                                        )
+                                    ),
+                                    React.createElement('div', { className: "text-right" },
+                                        React.createElement('div', { className: "text-sm text-gray-500" }, formatDate(event.timestamp))
+                                    )
+                                )
+                            )
+                    )
+                )
+            );
+        };
+
+        // Enhanced AI Insights Component
+        const AIInsights = ({ data }) => {
+            const insights = useMemo(() => {
+                if (data.length === 0) {
+                    return {
+                        peakHour: 'No data',
+                        peakHourCount: 0,
+                        dailyAverage: 0,
+                        mostActiveLocation: 'No data',
+                        anomalyDetected: false,
+                        pattern: 'No patterns detected',
+                        recommendations: [],
+                        weekendActivity: 0,
+                        confidenceAverage: 0,
+                    };
+                }
+
+                const hourlyCounts = {};
+                const locationCounts = {};
+                const dailyCounts = {};
+                const eventTypeCounts = {};
+                const weekendCounts = { events: 0, days: 0 };
+                const weekdayCounts = { events: 0, days: 0 };
+                
+                data.forEach(event => {
+                    const hour = new Date(event.timestamp).getHours();
+                    hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
+                    
+                    const location = event.location || 'Unknown';
+                    locationCounts[location] = (locationCounts[location] || 0) + 1;
+                    
+                    const eventType = event.eventType || 'motion';
+                    eventTypeCounts[eventType] = (eventTypeCounts[eventType] || 0) + 1;
+                    
+                    const eventDate = new Date(event.timestamp);
+                    eventDate.setHours(0, 0, 0, 0);
+                    const dateStr = eventDate.toDateString();
+                    dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
+                    
+                    const dayOfWeek = eventDate.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        weekendCounts.events++;
+                        if (!weekendCounts[dateStr]) {
+                            weekendCounts.days++;
+                            weekendCounts[dateStr] = true;
+                        }
+                    } else {
+                        weekdayCounts.events++;
+                        if (!weekdayCounts[dateStr]) {
+                            weekdayCounts.days++;
+                            weekdayCounts[dateStr] = true;
+                        }
+                    }
+                });
+
+                const peakHour = Object.entries(hourlyCounts).reduce((a, b) => 
+                    hourlyCounts[a[0]] > hourlyCounts[b[0]] ? a : b
+                );
+
+                const mostActiveLocation = Object.entries(locationCounts).reduce((a, b) => 
+                    locationCounts[a[0]] > locationCounts[b[0]] ? a : b
+                );
+
+                const dailyAverage = Math.round(data.length / 30);
+                
+                const confidenceAverage = Math.round(
+                    data.reduce((sum, event) => sum + (parseInt(event.confidence) || 0), 0) / data.length
+                );
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayEvents = data.filter(event => {
+                    const eventDate = new Date(event.timestamp);
+                    eventDate.setHours(0, 0, 0, 0);
+                    return eventDate.getTime() === today.getTime();
+                });
+
+                const highAlertDays = Object.entries(dailyCounts)
+                    .filter(([_, count]) => count > dailyAverage * 2)
+                    .map(([date, count]) => ({ date, count }));
+
+                const anomalyDetected = todayEvents.length > dailyAverage * 2 || highAlertDays.length > 0;
+
+                const weekendAvg = weekendCounts.days > 0 ? Math.round(weekendCounts.events / weekendCounts.days) : 0;
+                const weekdayAvg = weekdayCounts.days > 0 ? Math.round(weekdayCounts.events / weekdayCounts.days) : 0;
+                const weekendActivityPercent = weekdayAvg > 0 ? Math.round(((weekendAvg - weekdayAvg) / weekdayAvg) * 100) : 0;
+
+                let pattern = '';
+                let recommendations = [];
+
+                if (peakHour[0] >= 6 && peakHour[0] <= 9) {
+                    pattern = `Morning peak activity between ${peakHour[0]}:00-${parseInt(peakHour[0]) + 1}:00`;
+                    recommendations.push('Consider adjusting morning security protocols');
+                } else if (peakHour[0] >= 18 && peakHour[0] <= 22) {
+                    pattern = `Evening peak activity between ${peakHour[0]}:00-${parseInt(peakHour[0]) + 1}:00`;
+                    recommendations.push('Enhanced evening monitoring recommended');
+                } else if (peakHour[0] >= 23 || peakHour[0] <= 5) {
+                    pattern = `Unusual nighttime activity between ${peakHour[0]}:00-${parseInt(peakHour[0]) + 1}:00`;
+                    recommendations.push('Review nighttime security settings immediately');
+                } else {
+                    pattern = `Regular daytime activity with peak at ${peakHour[0]}:00`;
+                }
+
+                if (Math.abs(weekendActivityPercent) > 20) {
+                    if (weekendActivityPercent > 0) {
+                        pattern += `. Weekends show ${weekendActivityPercent}% higher activity`;
+                        recommendations.push('Weekend patterns require special attention');
+                    }
+                }
+
+                if (locationCounts[mostActiveLocation[0]] > data.length * 0.4) {
+                    const locationPercent = Math.round((locationCounts[mostActiveLocation[0]] / data.length) * 100);
+                    pattern += `. ${mostActiveLocation[0]} accounts for ${locationPercent}% of activity`;
+                    recommendations.push(`Focus monitoring on ${mostActiveLocation[0]}`);
+                }
+
+                if (anomalyDetected) {
+                    if (todayEvents.length > dailyAverage * 2) {
+                        recommendations.push(`⚠️ HIGH ACTIVITY ALERT: Today's activity is ${Math.round(todayEvents.length / dailyAverage)}x normal`);
+                    }
+                    if (highAlertDays.length > 0) {
+                        recommendations.push(`⚠️ ${highAlertDays.length} anomalous days detected`);
+                    }
+                }
+
+                if (recommendations.length === 0) {
+                    recommendations.push('✅ Activity patterns appear normal');
+                }
+
+                return {
+                    peakHour: `${peakHour[0]}:00`,
+                    peakHourCount: peakHour[1],
+                    dailyAverage,
+                    mostActiveLocation: mostActiveLocation[0],
+                    anomalyDetected,
+                    pattern,
+                    recommendations,
+                    weekendActivity: weekendActivityPercent,
+                    confidenceAverage,
+                };
+            }, [data]);
+
+            return React.createElement('div', { className: "insight-card animate-slide-up" },
+                React.createElement('div', { className: "flex items-center mb-6" },
+                    React.createElement(Brain, { className: "h-5 w-5 mr-2 text-blue-600" }),
+                    React.createElement('h2', { className: "text-xl font-semibold text-gray-900" }, "AI Insights")
+                ),
+                React.createElement('div', { className: "space-y-4" },
+                    React.createElement('div', { className: "p-4 bg-white/50 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-2" },
+                            React.createElement('span', { className: "text-sm font-medium text-gray-600" }, "Peak Hour"),
+                            React.createElement(Clock, { className: "h-4 w-4 text-blue-600" })
+                        ),
+                        React.createElement('p', { className: "text-lg font-semibold text-gray-900" }, insights.peakHour),
+                        React.createElement('p', { className: "text-sm text-gray-500" }, `${insights.peakHourCount} events`)
+                    ),
+                    React.createElement('div', { className: "p-4 bg-white/50 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-2" },
+                            React.createElement('span', { className: "text-sm font-medium text-gray-600" }, "Most Active Location"),
+                            React.createElement(MapPin, { className: "h-4 w-4 text-blue-600" })
+                        ),
+                        React.createElement('p', { className: "text-lg font-semibold text-gray-900" }, insights.mostActiveLocation)
+                    ),
+                    React.createElement('div', { className: "p-4 bg-white/50 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-2" },
+                            React.createElement('span', { className: "text-sm font-medium text-gray-600" }, "Daily Average"),
+                            React.createElement(Activity, { className: "h-4 w-4 text-blue-600" })
+                        ),
+                        React.createElement('p', { className: "text-lg font-semibold text-gray-900" }, `${insights.dailyAverage} events/day`)
+                    ),
+                    React.createElement('div', { className: "p-4 bg-white/50 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-2" },
+                            React.createElement('span', { className: "text-sm font-medium text-gray-600" }, "Avg Confidence"),
+                            React.createElement(TrendingUp, { className: "h-4 w-4 text-blue-600" })
+                        ),
+                        React.createElement('p', { className: "text-lg font-semibold text-gray-900" }, `${insights.confidenceAverage}%`)
+                    ),
+                    insights.anomalyDetected && React.createElement('div', { className: "p-4 bg-red-50 border border-red-200 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center mb-2" },
+                            React.createElement(AlertTriangle, { className: "h-4 w-4 text-red-600 mr-2" }),
+                            React.createElement('span', { className: "text-sm font-medium text-red-800" }, "Anomaly Detected")
+                        ),
+                        React.createElement('p', { className: "text-sm text-red-700" }, "Unusual activity patterns detected")
+                    ),
+                    React.createElement('div', { className: "p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg" },
+                        React.createElement('div', { className: "flex items-center mb-2" },
+                            React.createElement(TrendingUp, { className: "h-4 w-4 text-blue-600 mr-2" }),
+                            React.createElement('span', { className: "text-sm font-medium text-gray-700" }, "Pattern Analysis")
+                        ),
+                        React.createElement('p', { className: "text-sm text-gray-600 mb-3" }, insights.pattern),
+                        React.createElement('div', { className: "space-y-2" },
+                            React.createElement('span', { className: "text-xs font-medium text-gray-500 uppercase tracking-wider" }, "Recommendations"),
+                            insights.recommendations.map((rec, index) =>
+                                React.createElement('div', { key: index, className: "flex items-start" },
+                                    React.createElement('div', { className: "h-1.5 w-1.5 rounded-full bg-blue-600 mt-1.5 mr-2 flex-shrink-0" }),
+                                    React.createElement('p', { className: "text-xs text-gray-600" }, rec)
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Enhanced Charts Component
+        const Charts = ({ data }) => {
+            const chartRef = React.useRef(null);
+            const lineChartRef = React.useRef(null);
+
+            useEffect(() => {
+                if (!chartRef.current || data.length === 0) return;
+
+                const hourlyData = {};
+                for (let i = 0; i < 24; i++) {
+                    hourlyData[i] = 0;
+                }
+                
+                data.forEach(event => {
+                    const hour = new Date(event.timestamp).getHours();
+                    hourlyData[hour]++;
+                });
+
+                const ctx = chartRef.current.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(hourlyData).map(h => `${h}:00`),
+                        datasets: [{
+                            label: 'Motion Events',
+                            data: Object.values(hourlyData),
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Events: ${context.parsed.y}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+                // Line chart for daily trend
+                const dailyData = {};
+                const last30Days = [];
+                
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    date.setHours(0, 0, 0, 0);
+                    const dateStr = date.toDateString();
+                    last30Days.push(dateStr);
+                    dailyData[dateStr] = { total: 0, highAlert: 0, cameraTrigger: 0, motion: 0 };
+                }
+                
+                data.forEach(event => {
+                    const eventDate = new Date(event.timestamp);
+                    eventDate.setHours(0, 0, 0, 0);
+                    const dateStr = eventDate.toDateString();
+                    if (dailyData.hasOwnProperty(dateStr)) {
+                        dailyData[dateStr].total++;
+                        if (event.eventType === 'high_alert') dailyData[dateStr].highAlert++;
+                        else if (event.eventType === 'camera_trigger') dailyData[dateStr].cameraTrigger++;
+                        else dailyData[dateStr].motion++;
+                    }
+                });
+
+                const lineCtx = lineChartRef.current.getContext('2d');
+                new Chart(lineCtx, {
+                    type: 'line',
+                    data: {
+                        labels: last30Days.map(date => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                        datasets: [
+                            {
+                                label: 'High Alerts',
+                                data: last30Days.map(date => dailyData[date].highAlert),
+                                borderColor: 'rgba(239, 68, 68, 1)',
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0.4,
+                            },
+                            {
+                                label: 'Camera Triggers',
+                                data: last30Days.map(date => dailyData[date].cameraTrigger),
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0.4,
+                            },
+                            {
+                                label: 'Motion',
+                                data: last30Days.map(date => dailyData[date].motion),
+                                borderColor: 'rgba(34, 197, 94, 1)',
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0.4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }, [data]);
+
+            return React.createElement('div', { className: "space-y-6" },
+                React.createElement('div', { className: "glass-card animate-slide-up" },
+                    React.createElement('h2', { className: "text-xl font-semibold text-gray-900 mb-6 flex items-center" },
+                        React.createElement(BarChart3, { className: "h-5 w-5 mr-2 text-blue-600" }),
+                        "Hourly Activity Distribution"
+                    ),
+                    React.createElement('div', { className: "h-64" },
+                        React.createElement('canvas', { ref: chartRef })
+                    )
+                ),
+                React.createElement('div', { className: "glass-card animate-slide-up", style: { animationDelay: '0.1s' } },
+                    React.createElement('h2', { className: "text-xl font-semibold text-gray-900 mb-6 flex items-center" },
+                        React.createElement(TrendingUp, { className: "h-5 w-5 mr-2 text-blue-600" }),
+                        "30-Day Activity Trend"
+                    ),
+                    React.createElement('div', { className: "h-64" },
+                        React.createElement('canvas', { ref: lineChartRef })
+                    )
+                )
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [darkMode, setDarkMode] = useState(false);
+            const [data, setData] = useState([]);
+            const [filteredData, setFilteredData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [dateFilter, setDateFilter] = useState('month');
+            const [isRefreshing, setIsRefreshing] = useState(false);
+            const [lastRefresh, setLastRefresh] = useState(new Date());
+
+            useEffect(() => {
+                const loadData = () => {
+                    try {
+                        setLoading(true);
+                        const mockData = generateMockData();
+                        setData(mockData);
+                    } catch (err) {
+                        console.error('Failed to load data:', err);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                loadData();
+            }, []);
+
+            useEffect(() => {
+                const filtered = getFilteredData(data, dateFilter);
+                setFilteredData(filtered);
+            }, [data, dateFilter]);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    if (Math.random() < 0.3) {
+                        setData(prevData => {
+                            const newEvent = generateNewEvent();
+                            const newData = [newEvent, ...prevData];
+                            return newData.slice(0, 500);
+                        });
+                        setLastRefresh(new Date());
+                    }
+                }, 15000);
+
+                return () => clearInterval(interval);
+            }, []);
+
+            const handleManualRefresh = () => {
+                setIsRefreshing(true);
+                setTimeout(() => {
+                    setData(prevData => {
+                        const newEvent = generateNewEvent();
+                        const newData = [newEvent, ...prevData];
+                        return newData.slice(0, 500);
+                    });
+                    setLastRefresh(new Date());
+                    setIsRefreshing(false);
+                }, 1000);
+            };
+
+            if (loading) {
+                return React.createElement('div', { className: "min-h-screen bg-gray-50 flex items-center justify-center" },
+                    React.createElement('div', { className: "text-center" },
+                        React.createElement('div', { className: "animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" }),
+                        React.createElement('p', { className: "mt-4 text-gray-600" }, "Loading dashboard...")
+                    )
+                );
+            }
+
+            return React.createElement('div', { className: "min-h-screen bg-gray-50" },
+                React.createElement('header', { className: "bg-white shadow-sm border-b border-gray-200" },
+                    React.createElement('div', { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" },
+                        React.createElement('div', { className: "flex justify-between items-center py-4" },
+                            React.createElement('div', { className: "flex items-center space-x-3" },
+                                React.createElement(Activity, { className: "h-8 w-8 text-blue-600" }),
+                                React.createElement('div', null,
+                                    React.createElement('h1', { className: "text-2xl font-bold text-gray-900" }, "Smart Monitoring Dashboard"),
+                                    React.createElement('p', { className: "text-sm text-gray-500" }, "Real-time motion detection insights")
+                                )
+                            ),
+                            React.createElement('div', { className: "flex items-center space-x-3" },
+                                React.createElement('div', { className: "flex items-center space-x-2" },
+                                    React.createElement(Filter, { className: "h-4 w-4 text-gray-500" }),
+                                    React.createElement('select', {
+                                        value: dateFilter,
+                                        onChange: (e) => setDateFilter(e.target.value),
+                                        className: "px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                    },
+                                        React.createElement('option', { value: "day" }, "Today"),
+                                        React.createElement('option', { value: "week" }, "Last 7 Days"),
+                                        React.createElement('option', { value: "month" }, "Last 30 Days")
+                                    )
+                                ),
+                                React.createElement('button', {
+                                    onClick: handleManualRefresh,
+                                    disabled: isRefreshing,
+                                    className: "p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                },
+                                    React.createElement(RefreshCw, { className: `h-5 w-5 text-gray-700 ${isRefreshing ? 'animate-spin' : ''}` })
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => setDarkMode(!darkMode),
+                                    className: "p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                                },
+                                    darkMode ? React.createElement(Sun, { className: "h-5 w-5 text-yellow-500" }) : React.createElement(Moon, { className: "h-5 w-5 text-gray-700" })
+                                )
+                            )
+                        )
+                    )
+                ),
+                React.createElement('main', { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" },
+                    React.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" },
+                        React.createElement('div', { className: "lg:col-span-2" },
+                            React.createElement(MetricCards, { data: filteredData })
+                        ),
+                        React.createElement('div', null,
+                            React.createElement(AIInsights, { data: filteredData })
+                        )
+                    ),
+                    React.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8" },
+                        React.createElement(Charts, { data: filteredData }),
+                        React.createElement(EventTimeline, { data: filteredData })
+                    )
+                ),
+                React.createElement('footer', { className: "bg-white border-t border-gray-200 mt-auto" },
+                    React.createElement('div', { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" },
+                        React.createElement('div', { className: "flex items-center justify-between" },
+                            React.createElement('p', { className: "text-sm text-gray-500" }, `Last refresh: ${lastRefresh.toLocaleTimeString()}`),
+                            React.createElement('div', { className: "flex items-center space-x-4" },
+                                React.createElement('div', { className: "flex items-center space-x-2" },
+                                    React.createElement('div', { className: "h-2 w-2 bg-green-500 rounded-full animate-pulse" }),
+                                    React.createElement('span', { className: "text-sm text-gray-500" }, "Live Auto-refresh")
+                                ),
+                                React.createElement('span', { className: "text-sm text-gray-500" },
+                                    `Showing: ${dateFilter === 'day' ? 'Today' : dateFilter === 'week' ? 'Last 7 Days' : 'Last 30 Days'} (${filteredData.length} events)`
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>
